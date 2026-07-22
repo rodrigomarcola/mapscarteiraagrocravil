@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Visualizador KML</title>
+    <style>
+      html, body, #map { height: 100%; margin: 0; padding: 0; }
+    </style>
+    <!-- Substitua SUA_API_KEY por uma chave válida obtida no Google Cloud Console -->
+    <script src="https://googleapis.com"></script>
+    <script>
+      function initMap() {
+        // Inicializa o mapa focado em uma coordenada padrão
+        var map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 12,
+          center: {lat: -27.0, lng: -49.0} 
+        });
+
+        // URL do seu arquivo KML bruto hospedado publicamente
+        var kmlUrl = 'https://raw.githubusercontent.com/rodrigomarcola/mapscarteiraagrocravil/main/MODELO%20KML.KML';
+
+        // Carrega e renderiza a camada KML de forma nativa e moderna
+        var kmlLayer = new google.maps.KmlLayer({
+          url: kmlUrl,
+          map: map
+        });
+      }
+      window.onload = initMap;
+    </script>
+  </head>
+  <body>
+    <div id="map"></div>
+  </body>
+</html>
