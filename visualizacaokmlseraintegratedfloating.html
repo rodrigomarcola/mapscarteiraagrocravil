@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualização KML</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        #container { display: flex; height: 100vh; position: relative; }
+        
+        /* AJUSTADO: A barra lateral agora é flutuante e tem altura dinâmica (max-height) 
+           baseada na quantidade de itens internos, sem ocupar toda a tela vertical. */
+        #sidebar { 
+            width: 280px; 
+            max-height: calc(100vh - 40px);
+            background: #f8f9fa; 
+            padding: 10px; 
+            overflow-y: auto; 
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            z-index: 1000;
+            position: absolute;
+            top: 90px;
+            left: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        /* AJUSTADO: O mapa agora preenche o fundo de forma absoluta e independente da barra */
+        #map { 
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 100%;
+            width: 100%;
+            z-index: 1;
+        }
+        
+        /* Ajustado para flutuar ao lado da barra lateral */
+        #toggle-btn {
+            position: absolute;
+            top: 60px;
+            left: 33px;
+            z-index: 1001;
+            background: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            font-size: 15px;
+            transition: left 0.2s ease;
+        }
+
+        .list-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px;
+            margin: 8px 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .list-item:hover { background: #e3f2fd; border-color: #2196F3; }
+        .list-item input[type="checkbox"] { cursor: pointer; margin-top: 3px; }
+        .item-text { flex: 1; }
+    </style>
+</head>
+<body>
+    <button id="toggle-btn">☰ Ocultar Lista</button>
+    
+    <div id="container">
+        <!-- Sidebar -->
+        <div id="sidebar">
+            <h3 style="margin-top: 10px; margin-bottom: 15px;">Elementos</h3>
+            
+            <div class="list-item" data-type="polygon">
+                <input type="checkbox" class="layer-toggle" data-type="polygon" checked>
+                <div class="item-text">
+                    📍 Área Principal<br>
+                    <small>60 - 2026 - RODRIGO MARCOLA</small>
+                </div>
+            </div>
+
+            <div class="list-item" data-type="marker" data-id="ponto1">
+                <input type="checkbox" class="layer-toggle" data-type="marker" data-id="ponto1" checked>
+                <div class="item-text">
+                    📍 Ponto Principal<br>
+                    <small>111644 - RODRIGO MARCOLA</small>
+                </div>
+            </div>
+
+            <div class="list-item" data-type="marker" data-id="ponto2">
+                <input type="checkbox" class="layer-toggle" data-type="marker" data-id="ponto2" checked>
+                <div class="item-text">
+                    📍 Segundo Ponto<br>
+                    <small>Acompanhamento Técnico</small>
+                </div>
+            </div>
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([-27.40, -49.80], 9);
+
+        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri'
+        }).addTo(map);
+
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        });
+
+        const polygonCoords = [
+            [-27.203164, -49.6176671], [-27.2034717, -49.6176805],
+            [-27.2035099, -49.6187856], [-27.203987, -49.6190699],
+            [-27.2043257, -49.6191075], [-27.2044641, -49.6190645],
+            [-27.2048124, -49.6189036], [-27.205008, -49.6185978],
+            [-27.2050271, -49.6173908], [-27.2060146, -49.6172889],
+            [-27.2059908, -49.6154114], [-27.2065061, -49.6151753],
+            [-27.2065061, -49.6141937], [-27.206029, -49.6139415],
+            [-27.2040251, -49.6145155], [-27.2033763, -49.615237],
+            [-27.2031425, -49.6152451], [-27.203164, -49.6176671]
+        ];
+
+        const myPolygon = L.polygon(polygonCoords, {
+            color: '#FF5252', weight: 3, fillOpacity: 0.35
+        }).bindPopup("<b>Área Principal</b><br>60 - 2026 - RODRIGO MARCOLA");
+        myPolygon.addTo(map);
+
+        const meusMarcadores = {
+            "ponto1": L.marker([-27.1876285, -49.6066494]).bindPopup("<b>Ponto Principal</b><br>111644 - RODRIGO MARCOLA"),
+            "ponto2": L.marker([-27.547539929, -50.025449027]).bindPopup("<b>Segundo Ponto</b><br>Novas Coordenadas Inseridas")
+        };
+
+        for (let chave in meusMarcadores) {
+            meusMarcadores[chave].addTo(map);
+        }
+
+        L.control.layers({
+            "Satélite": satellite,
+            "Mapa Normal": osm
+        }, {
+            "Área (Polígono)": myPolygon,
+            "Ponto Principal": meusMarcadores["ponto1"],
+            "Segundo Ponto": meusMarcadores["ponto2"]
+        }).addTo(map);
+
+        // ABORDAGEM MANTIDA: Preservado exatamente igual à versão em que o mapa funcionava
+        document.querySelectorAll('.list-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const type = this.getAttribute('data-type');
+                const checkbox = this.querySelector('.layer-toggle');
+
+                if (!checkbox.checked) return;
+                
+                if (type === "polygon") {
+                    map.fitBounds(myPolygon.getBounds(), { padding: [60, 60] });
+                    myPolygon.openPopup();
+                } else if (type === "marker") {
+                    const id = this.getAttribute('data-id');
+                    const marcadorSelecionado = meusMarcadores[id];
+                    
+                    if (marcadorSelecionado) {
+                        map.setView(marcadorSelecionado.getLatLng(), 17);
+                        marcadorSelecionado.openPopup();
+                    }
+                }
+            });
+        });
+
+        document.querySelectorAll('.layer-toggle').forEach(checkbox => {
+            checkbox.addEventListener('change', function(e) {
+                e.stopPropagation();
+
+                const type = this.getAttribute('data-type');
+                const isChecked = this.checked;
+
+                if (type === "polygon") {
+                    if (isChecked) { myPolygon.addTo(map); } else { map.removeLayer(myPolygon); }
+                } else if (type === "marker") {
+                    const id = this.closest('.list-item').getAttribute('data-id');
+                    const marcadorSelecionado = meusMarcadores[id];
+                    if (marcadorSelecionado) {
+                        if (isChecked) { marcadorSelecionado.addTo(map); } else { map.removeLayer(marcadorSelecionado); }
+                    }
+                }
+            });
+
+            checkbox.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+        });
+
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('toggle-btn');
+
+        toggleBtn.addEventListener('click', () => {
+            if (sidebar.style.display === 'none') {
+                sidebar.style.display = 'block';
+                toggleBtn.textContent = '☰ Ocultar Lista';
+                toggleBtn.style.left = '320px';
+            } else {
+                sidebar.style.display = 'none';
+                toggleBtn.textContent = '☰ Mostrar Lista';
+                toggleBtn.style.left = '20px';
+            }
+            setTimeout(() => map.invalidateSize(), 300);
+        });
+    </script>
+</body>
+</html>
