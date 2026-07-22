@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualização KML - Melhorada</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        #container { display: flex; height: 100vh; position: relative; }
+        
+        #sidebar { 
+            width: 280px; 
+            background: #f8f9fa; 
+            padding: 15px; 
+            overflow-y: auto; 
+            border-right: 1px solid #ddd;
+            transition: width 0.3s;
+            z-index: 1000;
+        }
+        
+        #map { flex: 1; }
+        
+        #toggle-btn {
+            position: absolute;
+            top: 10px;
+            left: 300px;           /* Moved right to avoid zoom control */
+            z-index: 1001;
+            background: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            font-size: 16px;
+        }
+
+        .list-item {
+            padding: 12px;
+            margin: 8px 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .list-item:hover { background: #e3f2fd; border-color: #2196F3; }
+    </style>
+</head>
+<body>
+    <button id="toggle-btn">☰ Ocultar Lista</button>
+    
+    <div id="container">
+        <div id="sidebar">
+            <h2>Elementos do Mapa</h2>
+            <div class="list-item" data-type="polygon">
+                📍 Área Principal<br>
+                <small>60 - 2026 - RODRIGO MARCOLA</small>
+            </div>
+            <div class="list-item" data-type="marker">
+                📍 Ponto Principal<br>
+                <small>111644 - RODRIGO MARCOLA</small>
+            </div>
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([-27.20, -49.616], 15);
+
+        // Satellite as default
+        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri',
+            maxZoom: 19
+        }).addTo(map);
+
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        });
+
+        // Layers
+        const polygonCoords = [ /* ... same coordinates ... */
+            [-27.203164, -49.6176671], [-27.2034717, -49.6176805],
+            [-27.2035099, -49.6187856], [-27.203987, -49.6190699],
+            [-27.2043257, -49.6191075], [-27.2044641, -49.6190645],
+            [-27.2048124, -49.6189036], [-27.205008, -49.6185978],
+            [-27.2050271, -49.6173908], [-27.2060146, -49.6172889],
+            [-27.2059908, -49.6154114], [-27.2065061, -49.6151753],
+            [-27.2065061, -49.6141937], [-27.206029, -49.6139415],
+            [-27.2040251, -49.6145155], [-27.2033763, -49.615237],
+            [-27.2031425, -49.6152451], [-27.203164, -49.6176671]
+        ];
+
+        const myPolygon = L.polygon(polygonCoords, {
+            color: '#FF5252', weight: 3, fillOpacity: 0.35
+        }).bindPopup("<b>Área Principal</b><br>60 - 2026 - RODRIGO MARCOLA");
+
+        const myMarker = L.marker([-27.1876285, -49.6066494])
+                         .bindPopup("<b>Ponto Principal</b><br>111644 - RODRIGO MARCOLA");
+
+        myPolygon.addTo(map);
+        myMarker.addTo(map);
+
+        L.control.layers({
+            "Satélite": satellite,
+            "Mapa Normal": osm
+        }, {
+            "Área (Polígono)": myPolygon,
+            "Ponto Principal": myMarker
+        }).addTo(map);
+
+        // List Click
+        document.querySelectorAll('.list-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const type = this.getAttribute('data-type');
+
+                if (type === "polygon") {
+                    map.fitBounds(myPolygon.getBounds(), { padding: [60, 60] });
+                    myPolygon.openPopup();
+                } else if (type === "marker") {
+                    map.setView(myMarker.getLatLng(), 17);
+                    myMarker.openPopup();
+                }
+            });
+        });
+
+        // Toggle Sidebar
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('toggle-btn');
+
+        toggleBtn.addEventListener('click', () => {
+            if (sidebar.style.display === 'none') {
+                sidebar.style.display = 'block';
+                toggleBtn.style.left = '300px';
+                toggleBtn.textContent = '☰ Ocultar Lista';
+            } else {
+                sidebar.style.display = 'none';
+                toggleBtn.style.left = '10px';
+                toggleBtn.textContent = '☰ Mostrar Lista';
+            }
+            // Refresh map to fix grey areas
+            setTimeout(() => map.invalidateSize(), 300);
+        });
+
+        // Initial map refresh
+        setTimeout(() => map.invalidateSize(), 500);
+    </script>
+</body>
+</html>
