@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualização KML - Google Satellite</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { height: 100vh; width: 100%; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        const map = L.map('map').setView([-27.20, -49.616], 15);
+
+        // Google Satellite Tiles
+        L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '&copy; Google Maps'
+        }).addTo(map);
+
+        // Polygon
+        const polygonCoords = [
+            [-27.203164, -49.6176671], [-27.2034717, -49.6176805],
+            [-27.2035099, -49.6187856], [-27.203987, -49.6190699],
+            [-27.2043257, -49.6191075], [-27.2044641, -49.6190645],
+            [-27.2048124, -49.6189036], [-27.205008, -49.6185978],
+            [-27.2050271, -49.6173908], [-27.2060146, -49.6172889],
+            [-27.2059908, -49.6154114], [-27.2065061, -49.6151753],
+            [-27.2065061, -49.6141937], [-27.206029, -49.6139415],
+            [-27.2040251, -49.6145155], [-27.2033763, -49.615237],
+            [-27.2031425, -49.6152451], [-27.203164, -49.6176671]
+        ];
+
+        L.polygon(polygonCoords, {
+            color: '#FF5252',
+            weight: 3,
+            fillColor: '#FF5252',
+            fillOpacity: 0.25
+        }).addTo(map).bindPopup("<b>Área Principal</b><br>60 - 2026 - RODRIGO MARCOLA");
+
+        // Point
+        L.marker([-27.1876285, -49.6066494])
+         .addTo(map)
+         .bindPopup("<b>111644 - RODRIGO MARCOLA</b>")
+         .openPopup();
+
+        L.control.scale().addTo(map);
+    </script>
+</body>
+</html>
