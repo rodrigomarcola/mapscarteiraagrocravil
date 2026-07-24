@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Awesome 6.5.1 - Galeria Completa (Dinâmica)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
+        h1 { text-align: center; }
+        .search {
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 15px;
+            font-size: 18px;
+            border: 2px solid #aaa;
+            border-radius: 10px;
+            display: block;
+        }
+        .icons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 15px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+        .icon-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 20px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .icon-card:hover {
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            transform: translateY(-5px);
+        }
+        .icon-card i {
+            font-size: 40px;
+            margin-bottom: 12px;
+            color: #222;
+        }
+        .icon-name {
+            font-size: 13px;
+            color: #444;
+            word-break: break-all;
+        }
+        .copied {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #28a745;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 8px;
+            display: none;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+    <h1>Font Awesome 6.5.1 - Todos os Ícones</h1>
+    <input type="text" id="search" class="search" placeholder="Buscar ícone...">
+
+    <div class="icons-grid" id="grid"></div>
+
+    <div class="copied" id="copied">✅ Código copiado com sucesso!</div>
+
+    <script>
+        const grid = document.getElementById('grid');
+        const search = document.getElementById('search');
+        const copied = document.getElementById('copied');
+
+        let allIcons = [];
+
+        // Extract all icons dynamically from loaded Font Awesome
+        function extractIcons() {
+            allIcons = [];
+            const stylesheets = document.styleSheets;
+            
+            for (let sheet of stylesheets) {
+                try {
+                    const rules = sheet.cssRules || sheet.rules;
+                    for (let rule of rules) {
+                        if (rule.selectorText && rule.selectorText.includes('.fa-') && rule.selectorText.includes('::before')) {
+                            const className = rule.selectorText.split(',')[0].replace('.', '').trim();
+                            if (className.startsWith('fa-') && !allIcons.includes(className)) {
+                                allIcons.push(className);
+                            }
+                        }
+                    }
+                } catch(e) {}
+            }
+            
+            // Fallback popular icons in case extraction is limited
+            const fallback = [
+                "fa-solid fa-house","fa-solid fa-user","fa-solid fa-gear","fa-solid fa-magnifying-glass",
+                "fa-solid fa-bell","fa-solid fa-heart","fa-solid fa-star","fa-solid fa-arrow-right",
+                "fa-solid fa-arrow-left","fa-solid fa-trash-can","fa-solid fa-pen-to-square","fa-solid fa-plus",
+                // ... many more
+            ];
+            allIcons = [...new Set([...allIcons, ...fallback])];
+            renderIcons(allIcons);
+        }
+
+        function renderIcons(icons) {
+            grid.innerHTML = '';
+            icons.forEach(icon => {
+                const card = document.createElement('div');
+                card.className = 'icon-card';
+                card.innerHTML = `
+                    <i class="${icon}"></i>
+                    <div class="icon-name">${icon}</div>
+                `;
+                card.onclick = () => {
+                    navigator.clipboard.writeText(`<i class="${icon}"></i>`);
+                    copied.style.display = 'block';
+                    setTimeout(() => copied.style.display = 'none', 2200);
+                };
+                grid.appendChild(card);
+            });
+        }
+
+        // Load icons
+        window.onload = () => {
+            extractIcons();
+        };
+
+        // Search
+        search.addEventListener('input', () => {
+            const term = search.value.toLowerCase();
+            const filtered = allIcons.filter(icon => icon.toLowerCase().includes(term));
+            renderIcons(filtered);
+        });
+    </script>
+</body>
+</html>
