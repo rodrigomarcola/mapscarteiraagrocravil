@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Awesome 6.5.1 - Todos os Ícones</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        h1 { text-align: center; margin-bottom: 10px; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 30px; }
+        .search {
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto 30px;
+            padding: 14px 20px;
+            font-size: 17px;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            box-sizing: border-box;
+        }
+        .icons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 15px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        .icon-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 20px 10px;
+            text-align: center;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .icon-card:hover {
+            border-color: #0d6efd;
+            transform: translateY(-6px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+        }
+        .icon-card i {
+            font-size: 38px;
+            margin-bottom: 12px;
+            color: #333;
+        }
+        .icon-name {
+            font-size: 13px;
+            word-break: break-all;
+            color: #444;
+            margin-top: 8px;
+        }
+        .copied {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #28a745;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 2000;
+        }
+    </style>
+</head>
+<body>
+    <h1>Font Awesome 6.5.1</h1>
+    <p class="subtitle">Clique em qualquer ícone para copiar o código HTML</p>
+    <input type="text" id="search" class="search" placeholder="Buscar ícone (ex: user, car, home, arrow...)">
+
+    <div class="icons-grid" id="iconsGrid"></div>
+
+    <div class="copied" id="copied">✅ Código copiado para a área de transferência!</div>
+
+    <script>
+        const icons = [
+            // Solid Icons
+            "fa-solid fa-house", "fa-solid fa-user", "fa-solid fa-users", "fa-solid fa-user-plus",
+            "fa-solid fa-gear", "fa-solid fa-magnifying-glass", "fa-solid fa-bell", "fa-solid fa-envelope",
+            "fa-solid fa-map", "fa-solid fa-location-dot", "fa-solid fa-phone", "fa-solid fa-calendar",
+            "fa-solid fa-clock", "fa-solid fa-trash", "fa-solid fa-edit", "fa-solid fa-plus",
+            "fa-solid fa-minus", "fa-solid fa-check", "fa-solid fa-xmark", "fa-solid fa-arrow-left",
+            "fa-solid fa-arrow-right", "fa-solid fa-arrow-up", "fa-solid fa-arrow-down", "fa-solid fa-download",
+            "fa-solid fa-upload", "fa-solid fa-chart-bar", "fa-solid fa-table", "fa-solid fa-image",
+            "fa-solid fa-camera", "fa-solid fa-video", "fa-solid fa-folder", "fa-solid fa-file",
+            "fa-solid fa-list", "fa-solid fa-bars", "fa-solid fa-th", "fa-solid fa-star",
+            "fa-solid fa-heart", "fa-solid fa-tag", "fa-solid fa-cart-shopping", "fa-solid fa-truck",
+            "fa-solid fa-wifi", "fa-solid fa-battery-full", "fa-solid fa-bolt", "fa-solid fa-key",
+            "fa-solid fa-lock", "fa-solid fa-unlock", "fa-solid fa-eye", "fa-solid fa-eye-slash",
+            "fa-solid fa-print", "fa-solid fa-share", "fa-solid fa-copy", "fa-solid fa-paste",
+            "fa-solid fa-flag", "fa-solid fa-bookmark", "fa-solid fa-comment", "fa-solid fa-comments",
+            "fa-solid fa-paper-plane", "fa-solid fa-paperclip", "fa-solid fa-link", "fa-solid fa-globe",
+            "fa-solid fa-building", "fa-solid fa-store", "fa-solid fa-warehouse", "fa-solid fa-box",
+            "fa-solid fa-cube", "fa-solid fa-database", "fa-solid fa-server", "fa-solid fa-cloud",
+            "fa-solid fa-sun", "fa-solid fa-moon", "fa-solid fa-tree", "fa-solid fa-leaf",
+            "fa-solid fa-seedling", "fa-solid fa-tractor", "fa-solid fa-tractor", "fa-solid fa-tractor",
+            // Brands
+            "fa-brands fa-whatsapp", "fa-brands fa-telegram", "fa-brands fa-instagram",
+            "fa-brands fa-facebook", "fa-brands fa-twitter", "fa-brands fa-youtube",
+            "fa-brands fa-linkedin", "fa-brands fa-github", "fa-brands fa-google",
+            // Regular
+            "fa-regular fa-heart", "fa-regular fa-star", "fa-regular fa-user",
+            "fa-regular fa-folder", "fa-regular fa-file", "fa-regular fa-bell",
+            // More useful ones
+            "fa-solid fa-rotate", "fa-solid fa-sync", "fa-solid fa-spinner", "fa-solid fa-circle-check",
+            "fa-solid fa-circle-xmark", "fa-solid fa-info-circle", "fa-solid fa-exclamation-triangle",
+            "fa-solid fa-question-circle", "fa-solid fa-chevron-left", "fa-solid fa-chevron-right",
+            "fa-solid fa-chevron-up", "fa-solid fa-chevron-down", "fa-solid fa-sort",
+            "fa-solid fa-filter", "fa-solid fa-sort-amount-down", "fa-solid fa-sort-amount-up"
+        ];
+
+        const grid = document.getElementById('iconsGrid');
+        const searchInput = document.getElementById('search');
+        const copiedMsg = document.getElementById('copied');
+
+        function renderIcons(filteredIcons) {
+            grid.innerHTML = '';
+            filteredIcons.forEach(icon => {
+                const card = document.createElement('div');
+                card.className = 'icon-card';
+                card.innerHTML = `
+                    <i class="${icon}"></i>
+                    <div class="icon-name">${icon}</div>
+                `;
+                card.onclick = () => {
+                    navigator.clipboard.writeText(`<i class="${icon}"></i>`);
+                    copiedMsg.style.display = 'block';
+                    setTimeout(() => copiedMsg.style.display = 'none', 2200);
+                };
+                grid.appendChild(card);
+            });
+        }
+
+        renderIcons(icons);
+
+        searchInput.addEventListener('input', () => {
+            const term = searchInput.value.toLowerCase().trim();
+            const filtered = icons.filter(icon => icon.toLowerCase().includes(term));
+            renderIcons(filtered);
+        });
+    </script>
+</body>
+</html>
