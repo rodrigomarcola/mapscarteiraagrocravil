@@ -23,7 +23,7 @@
             border-radius: 8px;
             z-index: 1000;
             position: absolute;
-            top: 142px;
+            top: 172px;
             left: 12px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
@@ -41,7 +41,7 @@
         
         #toggle-btn {
             position: absolute;
-            top: 104px;
+            top: 134px;
             left: 12px;
             z-index: 1001;
             background: white;
@@ -199,7 +199,7 @@
         const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             attribution: '&copy; Esri',
             maxZoom: 19
-        }).addTo(map);
+        });
 
         const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors',
@@ -211,7 +211,7 @@
             attribution: '&copy; Google',
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
             maxZoom: 20
-        });
+        }).addTo(map);
 
         // 2. Google Terrain (Relief / Topographic)
         const googleTerreno = L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
