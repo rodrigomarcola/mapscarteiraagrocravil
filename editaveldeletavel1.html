@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualização KML</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-editable@1.2.0/src/Leaflet.Editable.js"></script>
+    
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        #container { display: flex; height: 100vh; position: relative; }
+        
+        #sidebar { 
+            width: 280px; 
+            max-height: calc(100vh - 40px);
+            background: #f8f9fa; 
+            padding: 10px; 
+            overflow-y: auto; 
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            z-index: 1000;
+            position: absolute;
+            top: 72px;
+            left: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        #map { 
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 100%;
+            width: 100%;
+            z-index: 1;
+        }
+        
+        #toggle-btn {
+            position: absolute;
+            top: 38px;
+            left: 52px;
+            z-index: 1001;
+            background: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            font-size: 15px;
+            transition: left 0.2s ease;
+        }
+
+        .list-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px;
+            margin: 8px 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .list-item:hover { background: #e3f2fd; border-color: #2196F3; }
+        .list-item input[type="checkbox"] { cursor: pointer; margin-top: 3px; }
+        .item-text { flex: 1; }
+
+        /* Força os botões do canto superior esquerdo a ficarem lado a lado (horizontal) */
+        .leaflet-top.leaflet-left {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 10px; /* Pequeno espaçamento elegante entre o Zoom e o Seletor */
+            position: relative;
+            z-index: 1002;
+        }
+
+        /* CORREÇÃO DEFINITIVA: Força o menu aberto do seletor a flutuar na frente de tudo */
+        .leaflet-control-layers-expanded {
+            position: absolute !important;
+            z-index: 1005 !important; /* Valor bem maior para rasgar e passar à frente da sidebar e botão */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
+        }
+    </style>
+</head>
+<body>
+    <button id="toggle-btn">☰ Ocultar Lista</button>
+    
+    <div id="container">
+        <div id="sidebar">
+
+            <!-- Seletor Unificado de Mapas (Livre de bugs de Z-Index) -->
+            <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #ddd;">
+                <label style="display: block; font-weight: bold; margin-bottom: 8px; color: #2c3e50; font-size: 14px;">🗺️ Estilo do Mapa de Fundo:</label>
+                <select id="seletor-fundo-agro" onchange="mudarFundoDoMapa(this.value)" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; cursor: pointer; background: white;">
+                    <option value="satelite-esri" selected>🛰️ Satélite (Esri)</option>
+                    <option value="satelite-google">🛰️ Satélite (Google Híbrido)</option>
+                    <option value="relevo-google">⛰️ Relevo (Google Terrain)</option>
+                    <option value="topo-curvas">📐 Topográfico (Curvas de Nível)</option>
+                    <option value="mapa-osm">🗺️ Mapa Normal (OSM)</option>
+                    <option value="mapa-limpo">🏁 Mapa Técnico Limpo</option>
+                </select>
+            </div>
+
+            <h3 style="margin-top: 10px; margin-bottom: 15px;">Elementos</h3>
+            
+<!--            <div class="list-item" data-type="polygon">																		-->
+<!--                <input type="checkbox" class="layer-toggle" data-type="polygon" checked>                                    -->
+<!--                <div class="item-text">                                                                                     -->
+<!--                    📍 Área Principal<br>                                                                                    -->
+<!--                    <small>60 - 2026 - RODRIGO MARCOLA</small><br>                                                          -->
+<!--                    <small style="color: #2196F3; font-weight: bold;" id="area-label">Calculando área...</small>            -->
+<!--                </div>                                                                                                      -->
+<!--            </div>                                                                                                          -->
+
+            <div class="list-item" data-type="polygon">
+                <input type="checkbox" class="layer-toggle" data-type="polygon" checked>
+                <div class="item-text" style="display: flex; align-items: center; gap: 8px;">
+
+                    <!-- DESENHO IDENTICO À IMAGEM VIA CSS PURO -->
+                    <div style="position: relative; width: 14px; height: 14px; background: rgba(255, 82, 82, 0.35); border: 2px solid #FF5252; box-sizing: border-box; flex-shrink: 0;">
+                        <div style="position: absolute; width: 4px; height: 4px; background: white; border: 1px solid #FF5252; border-radius: 50%; top: -4px; left: -4px;"></div>
+                        <div style="position: absolute; width: 4px; height: 4px; background: white; border: 1px solid #FF5252; border-radius: 50%; top: -4px; right: -4px;"></div>
+                        <div style="position: absolute; width: 4px; height: 4px; background: white; border: 1px solid #FF5252; border-radius: 50%; bottom: -4px; left: -4px;"></div>
+                        <div style="position: absolute; width: 4px; height: 4px; background: white; border: 1px solid #FF5252; border-radius: 50%; bottom: -4px; right: -4px;"></div>
+                    </div>
+
+                    <div>
+                        Área Principal<br>
+                        <small>60 - 2026 - RODRIGO MARCOLA</small><br>
+                        <small style="color: #2196F3; font-weight: bold;" id="area-label">Calculando área...</small>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="list-item" data-type="marker" data-id="ponto1">
+                <input type="checkbox" class="layer-toggle" data-type="marker" data-id="ponto1" checked>
+                <div class="item-text">
+                    📍 Ponto Principal<br>
+                    <small>111644 - RODRIGO MARCOLA</small>
+                </div>
+            </div>
+
+            <div class="list-item" data-type="marker" data-id="ponto2">
+                <input type="checkbox" class="layer-toggle" data-type="marker" data-id="ponto2" checked>
+                <div class="item-text">
+                    📍 Segundo Ponto<br>
+                    <small>Acompanhamento Técnico</small>
+                </div>
+            </div>
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <script>
+        function calcularAreaPlanometrica(coords) {
+            let area = 0;
+            const R = 6378137;
+            if (coords.length > 2) {
+                for (let i = 0; i < coords.length - 1; i++) {
+                    let p1 = coords[i];
+                    let p2 = coords[i + 1];
+                    let lat1 = p1.lat * Math.PI / 180;
+                    let lat2 = p2.lat * Math.PI / 180;
+                    let lon1 = p1.lng * Math.PI / 180;
+                    let lon2 = p2.lng * Math.PI / 180;
+                    area += (lon2 - lon1) * (2 + Math.sin(lat1) + Math.sin(lat2));
+                }
+                area = area * R * R / 2;
+            }
+            return Math.abs(area);
+        }
+
+        function atualizarRotuloDeArea(camadaPoligono) {
+            const pontosAtuais = camadaPoligono.getLatLngs()[0];
+            const pontosFechados = [...pontosAtuais, pontosAtuais[0]];
+            
+            const areaMetros = calcularAreaPlanometrica(pontosFechados);
+            const areaHectares = areaMetros / 10000;
+
+            const textoArea = areaHectares.toFixed(2) + " ha (" + areaMetros.toLocaleString('pt-BR', {maximumFractionDigits: 0}) + " m²)";
+            
+            document.getElementById('area-label').textContent = "Área: " + textoArea;
+            camadaPoligono.setPopupContent("<b>Área Principal</b><br>60 - 2026 - RODRIGO MARCOLA<br><b>Medida:</b> " + textoArea);
+        }
+
+        const map = L.map('map', { editable: true }).setView([-27.40, -49.80], 9);
+
+        // SOBRESCREVENDO O MÉTODO DO PLUGIN PARA CORRIGIR O BUG #64
+        L.Editable.VertexMarker.include({
+            createMiddleMarker: function (next) {
+                // Executa o comportamento padrão do plugin para criar o marcador
+                var marker = this.editor.createMiddleMarker(this, next);
+                if (!marker) return;
+
+                // MATEMÁTICA DA CORREÇÃO: Calcula o ponto médio geográfico exato na linha física
+                var p1 = this.latlng;
+                var p2 = next.latlng;
+                var pontoMedioReal = L.latLng((p1.lat + p2.lat) / 2, (p1.lng + p2.lng) / 2);
+
+                // Força o marcador bugado a se posicionar no local geométrico correto
+                marker.setLatLng(pontoMedioReal);
+
+                // Garante que o marcador se recalcule se o usuário arrastar a tela ou der zoom
+                this.editor.map.on('zoomend moveend', function () {
+                    if (marker && marker._map) {
+                        marker.setLatLng(L.latLng((p1.lat + p2.lat) / 2, (p1.lng + p2.lng) / 2));
+                    }
+                });
+
+                return marker;
+            }
+        });
+
+        // Base Layers - Correct URLs
+        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri',
+            maxZoom: 19
+        });
+
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 19
+        });
+
+        // 1. Google Satellite Hybrid (Satellite + Labels)
+        const googleHibrido = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            attribution: '&copy; Google',
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            maxZoom: 20
+        }).addTo(map);
+
+        // 2. Google Terrain (Relief / Topographic)
+        const googleTerreno = L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+            attribution: '&copy; Google',
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            maxZoom: 20
+        });
+
+        // 3. OpenTopoMap (Excellent for contours / agrimensura)
+        const topoMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data: &copy; OpenStreetMap | Style: &copy; OpenTopoMap',
+            maxZoom: 17
+        });
+
+        // 4. CartoDB Positron (Clean light map)
+        const mapaLimpo = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            maxZoom: 20
+        });
+
+        const polygonCoords = [
+            [-27.203164, -49.6176671], [-27.2034717, -49.6176805],
+            [-27.2035099, -49.6187856], [-27.203987, -49.6190699],
+            [-27.2043257, -49.6191075], [-27.2044641, -49.6190645],
+            [-27.2048124, -49.6189036], [-27.205008, -49.6185978],
+            [-27.2050271, -49.6173908], [-27.2060146, -49.6172889],
+            [-27.2059908, -49.6154114], [-27.2065061, -49.6151753],
+            [-27.2065061, -49.6141937], [-27.206029, -49.6139415],
+            [-27.2040251, -49.6145155], [-27.2033763, -49.615237],
+            [-27.2031425, -49.6152451], [-27.203164, -49.6176671]
+        ];
+
+        const myPolygon = L.polygon(polygonCoords, {
+            color: '#FF5252', weight: 3, fillOpacity: 0.35
+        }).bindPopup("<b>Área Principal</b><br>60 - 2026 - RODRIGO MARCOLA");
+        myPolygon.addTo(map);
+
+        myPolygon.enableEdit();
+
+        // VARIÁVEIS DE CONTROLE
+        let botaoMousePressionado = false;
+        let bloqueiaResetPorDblClick = false;
+
+        // 1. Captura quando o usuário inicia um clique duplo (deletar ponto)
+        window.addEventListener('dblclick', function() {
+            bloqueiaResetPorDblClick = true;
+
+            // Executa a deleção e libera a trava logo em seguida
+            setTimeout(function() {
+                if (myPolygon.editor) {
+                    myPolygon.editor.reset();
+                }
+                bloqueiaResetPorDblClick = false;
+            }, 250); // Tempo exato que o navegador precisa para processar a remoção do vértice
+        });
+
+        // 2. Monitora quando o usuário clica e segura (arrastar ponto)
+        window.addEventListener('mousedown', function(e) {
+            if (e.button === 0) {
+                botaoMousePressionado = true;
+            }
+        });
+
+        // 3. Monitora quando o usuário solta o botão do mouse
+        window.addEventListener('mouseup', function(e) {
+            if (e.button === 0) {
+                botaoMousePressionado = false;
+        
+                // SÓ executa o reset pós-arrasto se NÃO for um clique duplo de deleção
+                setTimeout(function() {
+                    if (!bloqueiaResetPorDblClick && myPolygon.editor) {
+                        myPolygon.editor.reset();
+
+                        // Opcional: Atualiza a área na barra lateral ao soltar/deletar o ponto
+                        if (typeof atualizarRotuloDeArea === 'function') {
+                            atualizarRotuloDeArea(myPolygon);
+                        }
+                    }
+                }, 50);
+            }
+        });
+
+        // 4. O movimento livre inicial continua igual
+        map.on('mousemove', function() {
+            if (!botaoMousePressionado && !bloqueiaResetPorDblClick && myPolygon.editor) {
+                myPolygon.editor.reset();
+            }
+        }, { once: true });
+
+        // 5. O mouseover de segurança continua igual
+        myPolygon.on('mouseover', function() {
+            if (!botaoMousePressionado && !bloqueiaResetPorDblClick && myPolygon.editor) {
+                myPolygon.editor.reset();
+            }
+        });
+
+        atualizarRotuloDeArea(myPolygon);
+
+        map.on('editable:vertex:drag editable:vertex:dragend', function() {
+            atualizarRotuloDeArea(myPolygon);
+        });
+
+        const meusMarcadores = {
+            "ponto1": L.marker([-27.1876285, -49.6066494]).bindPopup("<b>Ponto Principal</b><br>111644 - RODRIGO MARCOLA"),
+            "ponto2": L.marker([-27.547539929, -50.025449027]).bindPopup("<b>Segundo Ponto</b><br>Novas Coordenadas Inseridas")
+        };
+
+        for (let chave in meusMarcadores) {
+            meusMarcadores[chave].addTo(map);
+        }
+
+        // COLOQUE ESTE BLOCO NO LUGAR DO L.control.layers QUE VOCÊ APAGOU:
+        const todasAsCamadasDeFundo = {
+            "satelite-esri": satellite,
+            "satelite-google": googleHibrido,
+            "relevo-google": googleTerreno,
+            "topo-curvas": topoMap,
+            "mapa-osm": osm,
+            "mapa-limpo": mapaLimpo
+        };
+
+        function mudarFundoDoMapa(camadaSelecionada) {
+            for (let chave in todasAsCamadasDeFundo) {
+                map.removeLayer(todasAsCamadasDeFundo[chave]);
+            }
+            const mapaAlvo = todasAsCamadasDeFundo[camadaSelecionada];
+            if (mapaAlvo) {
+                mapaAlvo.addTo(map);
+            }
+        }
+
+        document.querySelectorAll('.list-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const type = this.getAttribute('data-type');
+                const checkbox = this.querySelector('.layer-toggle');
+
+                if (!checkbox.checked) return;
+                
+                if (type === "polygon") {
+                    map.fitBounds(myPolygon.getBounds(), { padding: [60, 60] });
+                    myPolygon.openPopup();
+    if (myPolygon.editor) {
+        myPolygon.editor.reset();
+alert("Aviso 272");
+    }
+                } else if (type === "marker") {
+                    const id = this.getAttribute('data-id');
+                    const marcadorSelecionado = meusMarcadores[id];
+                    
+                    if (marcadorSelecionado) {
+                        map.setView(marcadorSelecionado.getLatLng(), 17);
+                        marcadorSelecionado.openPopup();
+    if (myPolygon.editor) {
+        myPolygon.editor.reset();
+alert("Aviso 283");
+    }
+                    }
+                }
+            });
+        });
+
+        document.querySelectorAll('.layer-toggle').forEach(checkbox => {
+            checkbox.addEventListener('change', function(e) {
+                e.stopPropagation();
+
+                const type = this.getAttribute('data-type');
+                const isChecked = this.checked;
+
+                if (type === "polygon") {
+                    if (isChecked) { 
+                        myPolygon.addTo(map); 
+                        myPolygon.enableEdit();
+                    } else { 
+                        myPolygon.disableEdit(); 
+                        map.removeLayer(myPolygon); 
+                    }
+                } else if (type === "marker") {
+                    const id = this.closest('.list-item').getAttribute('data-id');
+                    const marcadorSelecionado = meusMarcadores[id];
+                    if (marcadorSelecionado) {
+                        if (isChecked) { marcadorSelecionado.addTo(map); } else { map.removeLayer(marcadorSelecionado); }
+                    }
+                }
+            });
+
+            checkbox.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+        });
+
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('toggle-btn');
+
+        toggleBtn.addEventListener('click', () => {
+            if (sidebar.style.display === 'none') {
+                sidebar.style.display = 'block';
+                toggleBtn.textContent = '☰ Ocultar Lista';
+                toggleBtn.style.left = '52px';
+            } else {
+                sidebar.style.display = 'none';
+                toggleBtn.textContent = '☰ Mostrar Lista';
+                toggleBtn.style.left = '52px';
+            }
+            setTimeout(() => map.invalidateSize(), 300);
+        });
+    </script>
+</body>
+</html>
