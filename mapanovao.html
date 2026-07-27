@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualização KML</title>
+
+    <script>
+        // CORREÇÃO: Barra incluída de forma explícita no fim do domínio base
+        var baseUnpkg = "https://unpkg.com/";
+        var versaoLeaflet = "leaflet@1.9.4/dist/";
+        var versaoGeoman = "@geoman-io/leaflet-geoman-free@2.17.0/dist/";
+
+        // Injeção limpa e segura de estilos CSS
+        var cssLeaflet = document.createElement('link');
+        cssLeaflet.rel = 'stylesheet';
+        cssLeaflet.href = baseUnpkg + versaoLeaflet + "leaflet.css";
+        document.head.appendChild(cssLeaflet);
+
+        var cssGeoman = document.createElement('link');
+        cssGeoman.rel = 'stylesheet';
+        cssGeoman.href = baseUnpkg + versaoGeoman + "leaflet-geoman.css";
+        document.head.appendChild(cssGeoman);
+
+        // Injeção ordenada de scripts (Garante o motor do mapa ativo antes da edição)
+        var jsLeaflet = document.createElement('script');
+        jsLeaflet.src = baseUnpkg + versaoLeaflet + "leaflet.js";
+        document.head.appendChild(jsLeaflet);
+
+        jsLeaflet.onload = function() {
+            var jsGeoman = document.createElement('script');
+            jsGeoman.src = baseUnpkg + versaoGeoman + "leaflet-geoman.min.js";
+            document.head.appendChild(jsGeoman);
+        };
+    </script>
+    
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        #container { display: flex; height: 100vh; position: relative; }
+        
+        #sidebar { 
+            width: 280px; 
+            max-height: calc(100vh - 40px);
+            background: #f8f9fa; 
+            padding: 10px; 
+            overflow-y: auto; 
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            z-index: 1000;
+            position: absolute;
+            top: 77px;
+            left: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: left 0.2s ease;
+        }
+        
+        #map { 
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 100%;
+            width: 100%;
+            z-index: 1;
+        }
+        
+        #toggle-btn {
+            position: absolute;
+            top: 36px;
+            left: 52px;
+            z-index: 1001;
+            background: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            font-size: 15px;
+            transition: left 0.2s ease;
+        }
+
+        .list-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px;
+            margin: 8px 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .list-item:hover { background: #e3f2fd; border-color: #2196F3; }
+        .list-item input[type="checkbox"] { cursor: pointer; margin-top: 3px; }
+        .item-text { flex: 1; }
+
+        /* AJUSTE DINÂMICO: Afasta a barra de ferramentas do Geoman para o lado se a lista abrir */
+        .leaflet-top.leaflet-left {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 10px; 
+            position: absolute;
+            top: 10px;
+            left: 310px; /* Margem padrão quando a Sidebar está visível */
+            z-index: 999; /* Mantém acessível mas flutuando de forma inteligente */
+            transition: left 0.2s ease;
+        }
+    </style>
+</head>
+<body>
+    <button id="toggle-btn">☰ Ocultar Lista</button>
+    
+    <div id="container">
+        <div id="sidebar">
+
+            <!-- Seletor Unificado de Mapas -->
+            <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #ddd;">
+                <label style="display: block; font-weight: bold; margin-bottom: 8px; color: #2c3e50; font-size: 14px;">🗺️ Estilo do Mapa de Fundo:</label>
+                <select id="seletor-fundo-agro" onchange="mudarFundoDoMapa(this.value)" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; cursor: pointer; background: white;">
+                    <option value="satelite-esri">静态 Satélite (Esri)</option>
+                    <option value="satelite-google" selected>🛰️ Satélite (Google Híbrido)</option>
+                    <option value="relevo-google">⛰️ Relevo (Google Terrain)</option>
+                    <option value="topo-curvas">📐 Topográfico (Curvas de Nível)</option>
+                    <option value="mapa-osm">🗺️ Mapa Normal (OSM)</option>
+                    <option value="mapa-limpo">🏁 Mapa Técnico Limpo</option>
+                </select>
+            </div>
+
+            <h3 style="margin-top: 10px; margin-bottom: 15px;">Elementos</h3>
+            
+            <!-- Contêiner dinâmico para os itens injetados -->
+            <div id="lista-elementos-agro">
+                <div class="list-item" data-type="polygon" id="item-poligono-principal">
+                    <input type="checkbox" class="layer-toggle" data-type="polygon" checked>
+                    <div class="item-text" style="display: flex; align-items: center; gap: 8px;">
+                        <div style="position: relative; width: 14px; height: 14px; background: rgba(255, 82, 82, 0.35); border: 2px solid #FF5252; box-sizing: border-box; flex-shrink: 0;">
+                            <div style="position: absolute; width: 4px; height: 4px; background: white; border: 1px solid #FF5252; border-radius: 50%; top: -4px; left: -4px;"></div>
+                            <div style="position: absolute; width: 4px; height: 4px; background: white; border: 1px solid #FF5252; border-radius: 50%; top: -4px; right: -4px;"></div>
+                            <div style="position: absolute; width: 4px; height: 4px; background: white; border: 1px solid #FF5252; border-radius: 50%; bottom: -4px; left: -4px;"></div>
+                            <div style="position: absolute; width: 4px; height: 4px; background: white; border: 1px solid #FF5252; border-radius: 50%; bottom: -4px; right: -4px;"></div>
+                        </div>
+                        <div>
+                            Área Principal<br>
+                            <small>60 - 2026 - RODRIGO MARCOLA</small><br>
+                            <small style="color: #2196F3; font-weight: bold;" id="area-label">Calculando área...</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="list-item" data-type="marker" data-id="ponto1" id="item-ponto1">
+                    <input type="checkbox" class="layer-toggle" data-type="marker" data-id="ponto1" checked>
+                    <div class="item-text">📍 Ponto Principal<br><small>111644 - RODRIGO MARCOLA</small></div>
+                </div>
+
+                <div class="list-item" data-type="marker" data-id="ponto2" id="item-ponto2">
+                    <input type="checkbox" class="layer-toggle" data-type="marker" data-id="ponto2" checked>
+                    <div class="item-text">📍 Segundo Ponto<br><small>Acompanhamento Técnico</small></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="map"></div>
+    </div>
+    <script>
+        function calcularAreaPlanometrica(coords) {
+            let area = 0; const R = 6378137;
+            if (coords.length > 2) {
+                for (let i = 0; i < coords.length - 1; i++) {
+                    let p1 = coords[i]; let p2 = coords[i + 1];
+                    area += (p2.lng * Math.PI / 180 - p1.lng * Math.PI / 180) * (2 + Math.sin(p1.lat * Math.PI / 180) + Math.sin(p2.lat * Math.PI / 180));
+                }
+                area = area * R * R / 2;
+            }
+            return Math.abs(area);
+        }
+
+        // Aguarda a injeção das dependências para construir o mapa de forma segura
+        var checarCarregamentoMap = setInterval(function() {
+            if (typeof L !== 'undefined' && typeof L.PM !== 'undefined') {
+                clearInterval(checarCarregamentoMap);
+                inicializarEstruturaDoMapa();
+            }
+        }, 100);
+
+        function inicializarEstruturaDoMapa() {
+            window.atualizarRotuloDeArea = function(camadaPoligono, campoId) {
+                const latlngsObj = camadaPoligono.getLatLngs();
+                const pontosAtuais = Array.isArray(latlngsObj[0]) ? latlngsObj[0] : latlngsObj;
+                
+                if (pontosAtuais.length === 0) return;
+                
+                const pontosFechados = [...pontosAtuais, pontosAtuais[0]];
+                const areaMetros = calcularAreaPlanometrica(pontosFechados);
+                const areaHectares = areaMetros / 10000;
+                const textoArea = areaHectares.toFixed(2) + " ha (" + areaMetros.toLocaleString('pt-BR', {maximumFractionDigits: 0}) + " m²)";
+                
+                if (campoId && document.getElementById(campoId)) {
+                    document.getElementById(campoId).textContent = "Área: " + textoArea;
+                } else if (document.getElementById('area-label') && !campoId) {
+                    document.getElementById('area-label').textContent = "Área: " + textoArea;
+                }
+                camadaPoligono.setPopupContent("<b>Área Calculada</b><br><b>Medida:</b> " + textoArea);
+            };
+
+            const map = L.map('map', { zoomSnap: 0.25, zoomDelta: 0.25, wheelPxPerZoomLevel: 120, zoomAnimation: true }).setView([-27.40, -49.80], 9);
+
+            var servidorEsri = "https://arcgisonline.com{z}/{y}/{x}";
+            var servidorOsm = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+            var servidorGoogleY = "https://google.com{x}&y={y}&z={z}";
+            var servidorGoogleP = "https://google.com{x}&y={y}&z={z}";
+            var servidorTopo = "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png";
+            var servidorLimpo = "https://{s}://{z}/{x}/{y}.png";
+
+            const satellite = L.tileLayer(servidorEsri, { attribution: '&copy; Esri', maxZoom: 19 });
+            const osm = L.tileLayer(servidorOsm, { attribution: '&copy; OpenStreetMap', maxZoom: 19 });
+            const googleHibrido = L.tileLayer(servidorGoogleY, { attribution: '&copy; Google', maxZoom: 20 }).addTo(map);
+            const googleTerreno = L.tileLayer(servidorGoogleP, { attribution: '&copy; Google', maxZoom: 20 });
+            const topoMap = L.tileLayer(servidorTopo, { attribution: '&copy; OpenTopoMap', maxZoom: 17 });
+            const mapaLimpo = L.tileLayer(servidorLimpo, { attribution: '&copy; CARTO', maxZoom: 20 });
+
+            const polygonCoords = [
+                [-27.203164, -49.6176671], [-27.2034717, -49.6176805], [-27.2035099, -49.6187856], [-27.203987, -49.6190699],
+                [-27.2043257, -49.6191075], [-27.2044641, -49.6190645], [-27.2048124, -49.6189036], [-27.205008, -49.6185978],
+                [-27.2050271, -49.6173908], [-27.2060146, -49.6172889], [-27.2059908, -49.6154114], [-27.2065061, -49.6151753],
+                [-27.2065061, -49.6141937], [-27.206029, -49.6139415], [-27.2040251, -49.6145155], [-27.2033763, -49.615237],
+                [-27.2031425, -49.6152451], [-27.203164, -49.6176671]
+            ];
+
+            window.myPolygon = L.polygon(polygonCoords, { color: '#FF5252', weight: 3, fillOpacity: 0.35 }).addTo(map);
+            myPolygon.bindPopup("<b>Área Principal</b><br>60 - 2026 - RODRIGO MARCOLA");
+
+            myPolygon.pm.enable({ allowSelfIntersection: false });
+            atualizarRotuloDeArea(myPolygon);
+
+            myPolygon.on('pm:edit', function() { atualizarRotuloDeArea(myPolygon); });
+
+            window.meusMarcadores = {
+                "ponto1": L.marker([-27.1876285, -49.6066494]).bindPopup("<b>Ponto Principal</b><br>111644 - RODRIGO MARCOLA").addTo(map),
+                "ponto2": L.marker([-27.547539929, -50.025449027]).bindPopup("<b>Segundo Ponto</b><br>Acompanhamento Técnico").addTo(map)
+            };
+            for (let k in meusMarcadores) { meusMarcadores[k].pm.enable(); }
+
+            window.todasAsCamadasDeFundo = { "satelite-esri": satellite, "satelite-google": googleHibrido, "relevo-google": googleTerreno, "topo-curvas": topoMap, "mapa-osm": osm, "mapa-limpo": mapaLimpo };
+            
+            window.mudarFundoDoMapa = function(c) {
+                for (let k in todasAsCamadasDeFundo) { map.removeLayer(todasAsCamadasDeFundo[k]); }
+                if (todasAsCamadasDeFundo[c]) { todasAsCamadasDeFundo[c].addTo(map); }
+            };
+
+            map.pm.addControls({ position: 'topleft', drawMarker: true, drawPolyline: true, drawPolygon: true, editMode: true, dragMode: true, removalMode: true });
+            map.pm.setLang('pt_br');
+            // Gerencia os cliques nos itens da barra lateral para mover a câmera e abrir os popups
+            document.getElementById('lista-elementos-agro').addEventListener('click', function(e) {
+                const item = e.target.closest('.list-item');
+                if (!item || e.target.classList.contains('layer-toggle')) return;
+
+                const type = item.getAttribute('data-type');
+                const checkbox = item.querySelector('.layer-toggle');
+
+                if (!checkbox.checked) return;
+
+                if (type === "polygon") {
+                    if (item.id === "item-poligono-principal") {
+                        map.fitBounds(myPolygon.getBounds(), { padding: [60, 60] });
+                        myPolygon.openPopup();
+                    } else {
+                        const layerId = item.getAttribute('data-layer-id');
+                        const camadaDinamica = map._layers[layerId];
+                        if (camadaDinamica) {
+                            map.fitBounds(camadaDinamica.getBounds(), { padding: [60, 60] });
+                            camadaDinamica.openPopup();
+                        }
+                    }
+                } else if (type === "marker") {
+                    const id = item.getAttribute('data-id');
+                    let marcador = meusMarcadores[id] || map._layers[item.getAttribute('data-layer-id')];
+                    if (marcador) {
+                        map.setView(marcador.getLatLng(), 17);
+                        marcador.openPopup();
+                    }
+                }
+            });
+
+            // Gerencia as caixas de seleção (checkboxes) de visibilidade
+            document.getElementById('lista-elementos-agro').addEventListener('change', function(e) {
+                if (!e.target.classList.contains('layer-toggle')) return;
+                
+                const chk = e.target;
+                const item = chk.closest('.list-item');
+                const type = chk.getAttribute('data-type');
+                const isChecked = chk.checked;
+
+                if (type === "polygon") {
+                    if (item.id === "item-poligono-principal") {
+                        if (isChecked) { myPolygon.addTo(map); myPolygon.pm.enable(); }
+                        else { myPolygon.pm.disable(); map.removeLayer(myPolygon); }
+                    } else {
+                        const layerId = item.getAttribute('data-layer-id');
+                        const camadaDinamica = map._layers[layerId];
+                        if (camadaDinamica) {
+                            if (isChecked) { camadaDinamica.addTo(map); camadaDinamica.pm.enable(); }
+                            else { camadaDinamica.pm.disable(); map.removeLayer(camadaDinamica); }
+                        }
+                    }
+                } else if (type === "marker") {
+                    const id = item.getAttribute('data-id');
+                    let marcador = meusMarcadores[id] || map._layers[item.getAttribute('data-layer-id')];
+                    if (marcador) {
+                        if (isChecked) { marcador.addTo(map); marcador.pm.enable(); }
+                        else { marcador.pm.disable(); map.removeLayer(marcador); }
+                    }
+                }
+            });
+
+            // Controle de Ocultar/Mostrar Lista + Ajuste de Posição dos Menus do Geoman
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.getElementById('toggle-btn');
+            const controleLeaflet = document.querySelector('.leaflet-top.leaflet-left');
+
+            toggleBtn.addEventListener('click', () => {
+                if (sidebar.style.display === 'none') {
+                    sidebar.style.display = 'block';
+                    toggleBtn.textContent = '☰ Ocultar Lista';
+                    toggleBtn.style.left = '52px';
+                    if (controleLeaflet) controleLeaflet.style.left = '310px';
+                } else {
+                    sidebar.style.display = 'none';
+                    toggleBtn.textContent = '☰ Mostrar Lista';
+                    toggleBtn.style.left = '12px';
+                    if (controleLeaflet) controleLeaflet.style.left = '20px';
+                }
+                setTimeout(() => map.invalidateSize(), 300);
+            });
+
+            // Requisito: Sincronização Dinâmica de Inserção (Injeta na barra lateral)
+            map.on('pm:create', function(e) {
+                var camadaNova = e.layer;
+                var tipo = e.shape;
+                var stamp = L.Util.stamp(camadaNova);
+
+                camadaNova.pm.enable();
+
+                var containerLista = document.getElementById('lista-elementos-agro');
+                var novaDiv = document.createElement('div');
+                novaDiv.className = 'list-item';
+                novaDiv.setAttribute('data-layer-id', stamp);
+
+                if (tipo === 'Polygon') {
+                    novaDiv.setAttribute('data-type', 'polygon');
+                    var labelId = "area-dinamica-" + stamp;
+                    
+                    camadaNova.setStyle({ color: '#FF5252', weight: 3, fillOpacity: 0.35 });
+                    
+                    novaDiv.innerHTML = `
+                        <input type="checkbox" class="layer-toggle" data-type="polygon" checked>
+                        <div class="item-text" style="display: flex; align-items: center; gap: 8px;">
+                            <div style="position: relative; width: 14px; height: 14px; background: rgba(255, 82, 82, 0.35); border: 2px solid #FF5252; box-sizing: border-box; flex-shrink: 0;">
+                                <div style="position: absolute; width: 4px; height: 4px; background: white; border: 1px solid #FF5252; border-radius: 50%; top: -4px; left: -4px;"></div>
+                                <div style="position: absolute; width: 4px; height: 4px; background: white; border: 1px solid #FF5252; border-radius: 50%; top: -4px; right: -4px;"></div>
+                                <div style="position: absolute; width: 4px; height: 4px; background: white; border: 1px solid #FF5252; border-radius: 50%; bottom: -4px; left: -4px;"></div>
+                                <div style="position: absolute; width: 4px; height: 4px; background: white; border: 1px solid #FF5252; border-radius: 50%; bottom: -4px; right: -4px;"></div>
+                            </div>
+                            <div>
+                                Novo Talhão Desenhado<br>
+                                <small>ID Camada: ${stamp}</small><br>
+                                <small style="color: #2196F3; font-weight: bold;" id="${labelId}">Calculando área...</small>
+                            </div>
+                        </div>
+                    `;
+                    containerLista.appendChild(novaDiv);
+                    atualizarRotuloDeArea(camadaNova, labelId);
+
+                    camadaNova.on('pm:edit', function() {
+                        atualizarRotuloDeArea(camadaNova, labelId);
+                    });
+
+                } else if (tipo === 'Marker') {
+                    novaDiv.setAttribute('data-type', 'marker');
+                    novaDiv.innerHTML = `
+                        <input type="checkbox" class="layer-toggle" data-type="marker" checked>
+                        <div class="item-text">📍 Novo Ponto Demarcado<br><small>Lat: ${camadaNova.getLatLng().lat.toFixed(5)} | Lng: ${camadaNova.getLatLng().lng.toFixed(5)}</small></div>
+                    `;
+                    containerLista.appendChild(novaDiv);
+                    camadaNova.bindPopup("<b>Novo Ponto Demarcado</b><br>ID Camada: " + stamp).openPopup();
+                }
+            });
+
+            // Requisito: Sincronização Dinâmica de Exclusão (Remove da barra lateral ao usar a lixeira)
+            map.on('pm:remove', function(e) {
+                var stampExcluido = L.Util.stamp(e.layer);
+                var itemLista = document.querySelector(`[data-layer-id="${stampExcluido}"]`);
+                if (itemLista) {
+                    itemLista.remove();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
