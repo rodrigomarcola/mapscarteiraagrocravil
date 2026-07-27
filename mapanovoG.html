@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualização KML - Agrimensura</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.17.0/dist/leaflet-geoman.css" />
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.17.0/dist/leaflet-geoman.min.js"></script>
+
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        #container { display: flex; height: 100vh; position: relative; }
+        
+        #sidebar { 
+            width: 290px; 
+            background: #f8f9fa; 
+            padding: 15px; 
+            overflow-y: auto; 
+            border-right: 1px solid #ddd;
+            z-index: 1000;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+        }
+        
+        #map { flex: 1; }
+
+        #toggle-btn {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            z-index: 1001;
+            background: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            font-size: 15px;
+        }
+
+        .list-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px;
+            margin: 8px 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .list-item:hover { background: #e3f2fd; border-color: #2196F3; }
+    </style>
+</head>
+<body>
+    <button id="toggle-btn">☰ Ocultar Lista</button>
+    
+    <div id="container">
+        <div id="sidebar">
+            <!-- Seletor de Fundo -->
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 6px;">🗺️ Estilo do Mapa:</label>
+                <select id="seletor-fundo" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc;">
+                    <option value="satelite-google" selected>🛰️ Satélite Google Híbrido</option>
+                    <option value="satelite-esri">🛰️ Satélite Esri</option>
+                    <option value="relevo-google">⛰️ Relevo Google</option>
+                    <option value="topo-curvas">📐 Topográfico (Curvas)</option>
+                    <option value="mapa-osm">🗺️ OSM Normal</option>
+                    <option value="mapa-limpo">🏁 Mapa Limpo</option>
+                </select>
+            </div>
+
+            <h3>Elementos</h3>
+
+            <div class="list-item" data-type="polygon">
+                <input type="checkbox" class="layer-toggle" data-type="polygon" checked>
+                <div>
+                    📍 Área Principal<br>
+                    <small>60 - 2026 - RODRIGO MARCOLA</small><br>
+                    <small id="area-label" style="color:#d32f2f; font-weight:bold;">Calculando área...</small>
+                </div>
+            </div>
+
+            <div class="list-item" data-type="marker" data-id="ponto1">
+                <input type="checkbox" class="layer-toggle" data-type="marker" data-id="ponto1" checked>
+                <div>
+                    📍 Ponto Principal<br>
+                    <small>111644 - RODRIGO MARCOLA</small>
+                </div>
+            </div>
+
+            <div class="list-item" data-type="marker" data-id="ponto2">
+                <input type="checkbox" class="layer-toggle" data-type="marker" data-id="ponto2" checked>
+                <div>
+                    📍 Segundo Ponto<br>
+                    <small>Acompanhamento Técnico</small>
+                </div>
+            </div>
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <script>
+        // Map initialization
+        const map = L.map('map', { zoomSnap: 0.25, zoomDelta: 0.25 }).setView([-27.40, -49.80], 9);
+
+        // === BASE LAYERS ===
+        const satelliteEsri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri'
+        });
+
+        const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            subdomains: ['mt0','mt1','mt2','mt3'],
+            attribution: '&copy; Google'
+        }).addTo(map);
+
+        const googleTerrain = L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+            subdomains: ['mt0','mt1','mt2','mt3'],
+            attribution: '&copy; Google'
+        });
+
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap'
+        });
+
+        const topoMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenTopoMap'
+        });
+
+        const mapaLimpo = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; CARTO'
+        });
+
+        // Polygon
+        const polygonCoords = [ /* your coordinates */ 
+            [-27.203164, -49.6176671], [-27.2034717, -49.6176805],
+            [-27.2035099, -49.6187856], [-27.203987, -49.6190699],
+            [-27.2043257, -49.6191075], [-27.2044641, -49.6190645],
+            [-27.2048124, -49.6189036], [-27.205008, -49.6185978],
+            [-27.2050271, -49.6173908], [-27.2060146, -49.6172889],
+            [-27.2059908, -49.6154114], [-27.2065061, -49.6151753],
+            [-27.2065061, -49.6141937], [-27.206029, -49.6139415],
+            [-27.2040251, -49.6145155], [-27.2033763, -49.615237],
+            [-27.2031425, -49.6152451], [-27.203164, -49.6176671]
+        ];
+
+        const myPolygon = L.polygon(polygonCoords, {
+            color: '#FF5252', weight: 3, fillOpacity: 0.35
+        }).addTo(map).bindPopup("<b>Área Principal</b>");
+
+        // Markers
+        const meusMarcadores = {
+            "ponto1": L.marker([-27.1876285, -49.6066494]).addTo(map),
+            "ponto2": L.marker([-27.54754, -50.02545]).addTo(map)
+        };
+
+        // Geoman Controls
+        map.pm.addControls({
+            position: 'topleft',
+            drawMarker: true,
+            drawPolyline: true,
+            drawPolygon: true,
+            editMode: true,
+            removalMode: true
+        });
+
+        // Toggle Sidebar
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('toggle-btn');
+
+        toggleBtn.addEventListener('click', () => {
+            if (sidebar.style.display === 'none') {
+                sidebar.style.display = 'block';
+                toggleBtn.textContent = '☰ Ocultar Lista';
+            } else {
+                sidebar.style.display = 'none';
+                toggleBtn.textContent = '☰ Mostrar Lista';
+            }
+            setTimeout(() => map.invalidateSize(), 350);
+        });
+
+        // Background selector
+        document.getElementById('seletor-fundo').addEventListener('change', function() {
+            const value = this.value;
+            [satelliteEsri, googleHybrid, googleTerrain, topoMap, osm, mapaLimpo].forEach(layer => map.removeLayer(layer));
+
+            if (value === "satelite-esri") satelliteEsri.addTo(map);
+            else if (value === "satelite-google") googleHybrid.addTo(map);
+            else if (value === "relevo-google") googleTerrain.addTo(map);
+            else if (value === "topo-curvas") topoMap.addTo(map);
+            else if (value === "mapa-osm") osm.addTo(map);
+            else if (value === "mapa-limpo") mapaLimpo.addTo(map);
+        });
+    </script>
+</body>
+</html>
